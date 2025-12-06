@@ -6,5 +6,5 @@ public interface WalletRepository {
 
     Wallet findByOwnerLogin(String login);
 
-    Wallet save(String ownerLogin, Wallet wallet);
+    Wallet save(Wallet wallet);
 }

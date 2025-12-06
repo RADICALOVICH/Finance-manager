@@ -1,4 +1,4 @@
-package vp.financemanager.core.services;
+package vp.financemanager.core.service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

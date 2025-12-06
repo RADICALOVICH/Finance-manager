@@ -8,14 +8,14 @@ public class Transaction {
 
     private final TransactionType type;
     private final BigDecimal amount;         // сумма операции
-    private final String category;           // категория (например, "Еда", "Зарплата")
+    private final Category category;           // категория (например, "Еда", "Зарплата")
     private final String description;        // комментарий (может быть null или пустой)
     private final LocalDateTime timestamp;   // время операции
 
     public Transaction(
             TransactionType type,
             BigDecimal amount,
-            String category,
+            Category category,
             String description,
             LocalDateTime timestamp
     ) {
@@ -28,8 +28,8 @@ public class Transaction {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be positive");
         }
-        if (category == null || category.isBlank()) {
-            throw new IllegalArgumentException("Category cannot be null or blank");
+        if (category == null) {
+            throw new IllegalArgumentException("Category cannot be null");
         }
         if (timestamp == null) {
             throw new IllegalArgumentException("Timestamp cannot be null");
@@ -50,7 +50,7 @@ public class Transaction {
         return amount;
     }
 
-    public String getCategory() {
+    public Category getCategory() {
         return category;
     }
 
@@ -67,7 +67,7 @@ public class Transaction {
         return "Transaction{" +
                 "type=" + type +
                 ", amount=" + amount +
-                ", category='" + category + '\'' +
+                ", category='" + category.getName() + '\'' +
                 ", description='" + description + '\'' +
                 ", timestamp=" + timestamp +
                 '}';

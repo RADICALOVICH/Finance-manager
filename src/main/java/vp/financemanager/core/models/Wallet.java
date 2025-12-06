@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 public class Wallet {
+    private final String ownerLogin;
     // текущий баланс кошелька
     private BigDecimal balance;
 
@@ -16,7 +17,10 @@ public class Wallet {
     // бюджеты по категориям: категория и объект бюджета
     private final Map<Category, CategoryBudget> categoryBudgets;
 
-    public Wallet(BigDecimal initialBalance) {
+    public Wallet(String ownerLogin, BigDecimal initialBalance) {
+        if (ownerLogin == null || ownerLogin.isBlank()) {
+            throw new IllegalArgumentException("Owner login cannot be null or blank");
+        }
         if (initialBalance == null) {
             throw new IllegalArgumentException("Initial balance cannot be null");
         }
@@ -24,6 +28,7 @@ public class Wallet {
             throw new IllegalArgumentException("Initial balance cannot be negative");
         }
 
+        this.ownerLogin = ownerLogin.trim();
         this.balance = initialBalance;
         this.transactions = new ArrayList<>();
         this.categoryBudgets = new HashMap<>();
@@ -31,6 +36,10 @@ public class Wallet {
 
     public BigDecimal getBalance() {
         return balance;
+    }
+
+    public String getOwnerLogin() {
+        return ownerLogin;
     }
 
     public void setBalance(BigDecimal balance) {

@@ -1,4 +1,4 @@
-package vp.financemanager.core.services;
+package vp.financemanager.core.service;
 
 import vp.financemanager.core.models.User;
 import vp.financemanager.core.models.Wallet;
@@ -28,7 +28,7 @@ public class UserService {
         }
 
         String passwordHash = passwordHasher.hash(rawPassword);
-        Wallet wallet = new Wallet(initialBalance);
+        Wallet wallet = new Wallet(login, initialBalance);
         User user = new User(login, passwordHash, wallet);
 
         return userRepository.save(user);
