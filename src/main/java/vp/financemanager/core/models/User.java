@@ -28,4 +28,8 @@ public class User {
     public Wallet getWallet() {
         return wallet;
     }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
 }
