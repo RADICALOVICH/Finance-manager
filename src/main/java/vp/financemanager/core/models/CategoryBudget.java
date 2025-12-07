@@ -6,6 +6,8 @@ public class CategoryBudget {
 
     private final Category category;
     private BigDecimal limit; // установленный лимит по категории
+    private BigDecimal spent;
+
 
     public CategoryBudget(Category category, BigDecimal limit) {
         if (category == null) {
@@ -20,6 +22,7 @@ public class CategoryBudget {
 
         this.category = category;
         this.limit = limit;
+        this.spent = BigDecimal.ZERO;
     }
 
     public Category getCategory() {
@@ -28,6 +31,17 @@ public class CategoryBudget {
 
     public BigDecimal getLimit() {
         return limit;
+    }
+
+    public BigDecimal getSpent() {
+        return spent;
+    }
+
+    public void addSpent(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Amount cannot be null or negative");
+        }
+        this.spent = this.spent.add(amount);
     }
 
     public void setLimit(BigDecimal limit) {

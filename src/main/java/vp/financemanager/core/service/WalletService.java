@@ -1,9 +1,6 @@
 package vp.financemanager.core.service;
 
-import vp.financemanager.core.models.Category;
-import vp.financemanager.core.models.Transaction;
-import vp.financemanager.core.models.TransactionType;
-import vp.financemanager.core.models.Wallet;
+import vp.financemanager.core.models.*;
 import vp.financemanager.core.repository.WalletRepository;
 
 import java.math.BigDecimal;
@@ -65,6 +62,13 @@ public class WalletService {
 
         wallet.getTransactions().add(expense);
         wallet.setBalance(wallet.getBalance().subtract(amount));
+
+
+        CategoryBudget budget = wallet.getCategoryBudgets().get(category);
+        if (budget != null) {
+            budget.addSpent(amount);
+        }
+
         walletRepository.save(wallet);
     }
 
