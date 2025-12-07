@@ -8,6 +8,7 @@ import vp.financemanager.core.repository.WalletRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class WalletService {
     private final WalletRepository walletRepository;
@@ -67,5 +68,61 @@ public class WalletService {
         walletRepository.save(wallet);
     }
 
+    public BigDecimal getTotalIncome(Wallet wallet) {
+        return getTotalByTypeAndCategories(wallet, TransactionType.INCOME, null);
+    }
 
+    public BigDecimal getTotalExpense(Wallet wallet) {
+        return getTotalByTypeAndCategories(wallet, TransactionType.EXPENSE, null);
+    }
+
+    public BigDecimal getTotalIncomeByCategory(Wallet wallet, Category category) {
+        if (category == null) {
+            throw new IllegalArgumentException("Category cannot be null");
+        }
+        return getTotalByTypeAndCategories(wallet, TransactionType.INCOME, List.of(category));
+    }
+
+    public BigDecimal getTotalExpenseByCategory(Wallet wallet, Category category) {
+        if (category == null) {
+            throw new IllegalArgumentException("Category cannot be null");
+        }
+        return getTotalByTypeAndCategories(wallet, TransactionType.EXPENSE, List.of(category));
+    }
+
+
+    public BigDecimal getTotalByCategories(Wallet wallet,
+                                           List<Category> categories,
+                                           TransactionType type) {
+        return getTotalByTypeAndCategories(wallet, type, categories);
+    }
+
+    private BigDecimal getTotalByTypeAndCategories(Wallet wallet,
+                                                   TransactionType type,
+                                                   List<Category> categoriesOrNull) {
+        if (wallet == null) {
+            throw new IllegalArgumentException("Wallet cannot be null");
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("Transaction type cannot be null");
+        }
+
+        boolean filterByCategory = categoriesOrNull != null && !categoriesOrNull.isEmpty();
+
+        BigDecimal total = BigDecimal.ZERO;
+
+        for (Transaction tx : wallet.getTransactions()) {
+            if (tx.getType() != type) {
+                continue;
+            }
+
+            if (filterByCategory && !categoriesOrNull.contains(tx.getCategory())) {
+                continue;
+            }
+
+            total = total.add(tx.getAmount());
+        }
+
+        return total;
+    }
 }
