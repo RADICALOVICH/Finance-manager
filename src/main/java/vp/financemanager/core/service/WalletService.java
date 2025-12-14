@@ -4,8 +4,10 @@ import vp.financemanager.core.models.*;
 import vp.financemanager.core.repository.WalletRepository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class WalletService {
     private final WalletRepository walletRepository;
@@ -139,5 +141,29 @@ public class WalletService {
         }
 
         return total;
+    }
+
+    public List<Transaction> getTransactions(Wallet wallet, 
+                                             TransactionType type,
+                                             List<Category> categories,
+                                             LocalDate fromDate,
+                                             LocalDate toDate) {
+        if (wallet == null) {
+            throw new IllegalArgumentException("Wallet cannot be null");
+        }
+
+        return wallet.getTransactions().stream()
+                .filter(tx -> type == null || tx.getType() == type)
+                .filter(tx -> categories == null || categories.isEmpty() || categories.contains(tx.getCategory()))
+                .filter(tx -> {
+                    if (fromDate == null && toDate == null) {
+                        return true;
+                    }
+                    LocalDate txDate = tx.getTimestamp().toLocalDate();
+                    boolean afterFrom = fromDate == null || !txDate.isBefore(fromDate);
+                    boolean beforeTo = toDate == null || !txDate.isAfter(toDate);
+                    return afterFrom && beforeTo;
+                })
+                .collect(Collectors.toList());
     }
 }

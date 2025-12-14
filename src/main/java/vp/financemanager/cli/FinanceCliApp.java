@@ -1,6 +1,7 @@
 package vp.financemanager.cli;
 
 import vp.financemanager.core.models.Category;
+import vp.financemanager.core.models.Transaction;
 import vp.financemanager.core.models.TransactionType;
 import vp.financemanager.core.models.User;
 import vp.financemanager.core.models.Wallet;
@@ -15,7 +16,12 @@ import vp.financemanager.infra.repository.FileUserRepository;
 import vp.financemanager.infra.repository.FileWalletRepository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -86,6 +92,9 @@ public class FinanceCliApp {
                 case "set_budget":
                     handleSetBudget();
                     break;
+                case "remove_budget":
+                    handleRemoveBudget();
+                    break;
                 case "show_budgets":
                     handleShowBudgets();
                     break;
@@ -94,6 +103,9 @@ public class FinanceCliApp {
                     break;
                 case "show_summary":
                     handleShowSummary();
+                    break;
+                case "show_transactions":
+                    handleShowTransactions();
                     break;
                 case "exit":
                     saveAllData();
@@ -131,9 +143,11 @@ public class FinanceCliApp {
         System.out.println("  add_income     - add income transaction for current user");
         System.out.println("  add_expense    - add expense transaction for current user");
         System.out.println("  set_budget     - set budget for a category");
+        System.out.println("  remove_budget  - remove budget for a category");
         System.out.println("  show_budgets   - show budgets and remaining limits");
         System.out.println("  show_categories- list all categories with budgets");
         System.out.println("  show_summary   - show income/expenses summary");
+        System.out.println("  show_transactions - show transactions with filters (category, date range)");
         System.out.println("  exit           - exit the application");
     }
 
@@ -333,6 +347,31 @@ public class FinanceCliApp {
         }
     }
 
+    private void handleRemoveBudget() {
+        if (!ensureLoggedIn()) {
+            return;
+        }
+
+        Wallet wallet = currentUser.getWallet();
+
+        System.out.println("--- Remove budget for category ---");
+        System.out.print("Category name: ");
+        String categoryName = scanner.nextLine();
+
+        Category category = categoryService.findCategoryByName(wallet, categoryName);
+        if (category == null) {
+            System.out.println("Category '" + categoryName + "' not found.");
+            return;
+        }
+
+        try {
+            budgetService.removeBudget(wallet, category);
+            System.out.println("Budget removed for category '" + category.getName() + "'.");
+        } catch (IllegalArgumentException ex) {
+            System.out.println("Error removing budget: " + ex.getMessage());
+        }
+    }
+
     private void handleShowBudgets() {
         if (!ensureLoggedIn()) {
             return;
@@ -447,5 +486,103 @@ public class FinanceCliApp {
         }
     }
 
+    private void handleShowTransactions() {
+        if (!ensureLoggedIn()) {
+            return;
+        }
+
+        Wallet wallet = currentUser.getWallet();
+
+        System.out.println("--- Show Transactions ---");
+        System.out.print("Type (income/expense/all, default: all): ");
+        String typeInput = scanner.nextLine().trim().toLowerCase();
+        
+        TransactionType type = null;
+        if ("income".equals(typeInput)) {
+            type = TransactionType.INCOME;
+        } else if ("expense".equals(typeInput)) {
+            type = TransactionType.EXPENSE;
+        }
+
+        System.out.print("Categories (comma-separated, empty for all): ");
+        String categoriesInput = scanner.nextLine().trim();
+        
+        List<Category> categories = null;
+        if (!categoriesInput.isEmpty()) {
+            categories = new ArrayList<>();
+            String[] categoryNames = categoriesInput.split(",");
+            for (String catName : categoryNames) {
+                Category existing = categoryService.findCategoryByName(wallet, catName.trim());
+                if (existing != null) {
+                    categories.add(existing);
+                } else {
+                    System.out.println("Warning: Category '" + catName.trim() + "' not found, skipping.");
+                }
+            }
+            if (categories.isEmpty()) {
+                System.out.println("No valid categories found. Showing all transactions.");
+                categories = null;
+            }
+        }
+
+        System.out.print("From date (YYYY-MM-DD, empty for no limit): ");
+        String fromDateInput = scanner.nextLine().trim();
+        LocalDate fromDate = parseDate(fromDateInput);
+        if (fromDateInput != null && !fromDateInput.isEmpty() && fromDate == null) {
+            System.out.println("Invalid date format. Ignoring from date filter.");
+        }
+
+        System.out.print("To date (YYYY-MM-DD, empty for no limit): ");
+        String toDateInput = scanner.nextLine().trim();
+        LocalDate toDate = parseDate(toDateInput);
+        if (toDateInput != null && !toDateInput.isEmpty() && toDate == null) {
+            System.out.println("Invalid date format. Ignoring to date filter.");
+        }
+
+        List<Transaction> transactions = walletService.getTransactions(wallet, type, categories, fromDate, toDate);
+
+        if (transactions.isEmpty()) {
+            System.out.println("No transactions found matching the criteria.");
+            return;
+        }
+
+        System.out.println("\nTransactions:");
+        BigDecimal totalIncome = BigDecimal.ZERO;
+        BigDecimal totalExpense = BigDecimal.ZERO;
+        
+        for (Transaction tx : transactions) {
+            System.out.println(String.format("  %s | %s | %s | %s | %s",
+                    tx.getTimestamp().toLocalDate(),
+                    tx.getType(),
+                    tx.getCategory().getName(),
+                    tx.getAmount(),
+                    tx.getDescription() != null ? tx.getDescription() : ""));
+            
+            if (tx.getType() == TransactionType.INCOME) {
+                totalIncome = totalIncome.add(tx.getAmount());
+            } else {
+                totalExpense = totalExpense.add(tx.getAmount());
+            }
+        }
+        
+        System.out.println("\nTotal: " + transactions.size() + " transaction(s)");
+        if (type == null || type == TransactionType.INCOME) {
+            System.out.println("Total income (filtered): " + totalIncome);
+        }
+        if (type == null || type == TransactionType.EXPENSE) {
+            System.out.println("Total expense (filtered): " + totalExpense);
+        }
+    }
+
+    private LocalDate parseDate(String dateInput) {
+        if (dateInput == null || dateInput.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(dateInput.trim(), DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
 
 }

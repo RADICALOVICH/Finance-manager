@@ -95,6 +95,13 @@ public class Wallet {
         return this.categoryBudgets.containsKey(category);
     }
 
+    public void removeCategoryBudget(Category category) {
+        if (category == null) {
+            throw new IllegalArgumentException("Category cannot be null");
+        }
+        this.categoryBudgets.remove(category);
+    }
+
     public void restoreTransaction(Transaction transaction) {
         if (transaction == null) {
             return;
