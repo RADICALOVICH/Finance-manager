@@ -2,6 +2,7 @@ package vp.financemanager.core.models;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,10 +51,60 @@ public class Wallet {
     }
 
     public List<Transaction> getTransactions() {
-        return transactions;
+        return Collections.unmodifiableList(transactions);
     }
 
     public Map<Category, CategoryBudget> getCategoryBudgets() {
-        return categoryBudgets;
+        return Collections.unmodifiableMap(categoryBudgets);
+    }
+
+    /**
+     * Добавляет транзакцию и обновляет баланс
+     */
+    public void addTransaction(Transaction transaction) {
+        if (transaction == null) {
+            throw new IllegalArgumentException("Transaction cannot be null");
+        }
+        this.transactions.add(transaction);
+        
+        // Обновляем баланс в зависимости от типа транзакции
+        if (transaction.getType() == TransactionType.INCOME) {
+            this.balance = this.balance.add(transaction.getAmount());
+        } else if (transaction.getType() == TransactionType.EXPENSE) {
+            this.balance = this.balance.subtract(transaction.getAmount());
+        }
+    }
+
+    /**
+     * Добавляет бюджет для категории
+     */
+    public void addCategoryBudget(Category category, CategoryBudget budget) {
+        if (category == null) {
+            throw new IllegalArgumentException("Category cannot be null");
+        }
+        if (budget == null) {
+            throw new IllegalArgumentException("Budget cannot be null");
+        }
+        this.categoryBudgets.put(category, budget);
+    }
+
+    /**
+     * Получает бюджет для категории (может вернуть null)
+     */
+    public CategoryBudget getCategoryBudget(Category category) {
+        if (category == null) {
+            return null;
+        }
+        return this.categoryBudgets.get(category);
+    }
+
+    /**
+     * Проверяет, есть ли бюджет для категории
+     */
+    public boolean hasCategoryBudget(Category category) {
+        if (category == null) {
+            return false;
+        }
+        return this.categoryBudgets.containsKey(category);
     }
 }

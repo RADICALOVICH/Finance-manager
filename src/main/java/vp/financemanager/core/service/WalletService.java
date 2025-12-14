@@ -9,9 +9,11 @@ import java.util.List;
 
 public class WalletService {
     private final WalletRepository walletRepository;
+    private final BudgetService budgetService;
 
-    public WalletService(WalletRepository walletRepository) {
+    public WalletService(WalletRepository walletRepository, BudgetService budgetService) {
         this.walletRepository = walletRepository;
+        this.budgetService = budgetService;
     }
 
     public void addIncome(Wallet wallet, BigDecimal amount, Category category, String description) {
@@ -35,8 +37,7 @@ public class WalletService {
                 LocalDateTime.now()
         );
 
-        wallet.getTransactions().add(income);
-        wallet.setBalance(wallet.getBalance().add(amount));
+        wallet.addTransaction(income);
         walletRepository.save(wallet);
     }
 
@@ -53,20 +54,30 @@ public class WalletService {
             throw new IllegalArgumentException("Category cannot be null");
         }
 
+        // Убеждаемся, что бюджет существует для категории расходов
+        budgetService.ensureBudgetExists(wallet, category);
+        
+        // Находим правильную категорию (из budgets, если есть)
+        Category existingCategory = category;
+        CategoryBudget budget = wallet.getCategoryBudget(category);
+        if (budget != null) {
+            existingCategory = budget.getCategory();
+        }
+        
+        // Создаем транзакцию с правильной категорией
         Transaction expense = new Transaction(
                 TransactionType.EXPENSE,
                 amount,
-                category,
+                existingCategory,
                 description,
                 LocalDateTime.now());
-
-        wallet.getTransactions().add(expense);
-        wallet.setBalance(wallet.getBalance().subtract(amount));
-
-
-        CategoryBudget budget = wallet.getCategoryBudgets().get(category);
-        if (budget != null) {
-            budget.addSpent(amount);
+        
+        wallet.addTransaction(expense);
+        
+        // Обновляем spent в бюджете
+        CategoryBudget categoryBudget = wallet.getCategoryBudget(existingCategory);
+        if (categoryBudget != null) {
+            categoryBudget.addSpent(amount);
         }
 
         walletRepository.save(wallet);

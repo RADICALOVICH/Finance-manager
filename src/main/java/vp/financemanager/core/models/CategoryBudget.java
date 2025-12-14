@@ -53,4 +53,14 @@ public class CategoryBudget {
         }
         this.limit = limit;
     }
+
+    public void setSpent(BigDecimal spent) {
+        if (spent == null) {
+            throw new IllegalArgumentException("Spent cannot be null");
+        }
+        if (spent.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Spent cannot be negative");
+        }
+        this.spent = spent;
+    }
 }

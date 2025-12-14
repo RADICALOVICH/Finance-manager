@@ -1,0 +1,429 @@
+package vp.financemanager.cli;
+
+import vp.financemanager.core.models.Category;
+import vp.financemanager.core.models.TransactionType;
+import vp.financemanager.core.models.User;
+import vp.financemanager.core.models.Wallet;
+import vp.financemanager.core.repository.UserRepository;
+import vp.financemanager.core.repository.WalletRepository;
+import vp.financemanager.core.service.BudgetService;
+import vp.financemanager.core.service.CategoryService;
+import vp.financemanager.core.service.PasswordHasher;
+import vp.financemanager.core.service.UserService;
+import vp.financemanager.core.service.WalletService;
+import vp.financemanager.infra.repository.InMemoryUserRepository;
+import vp.financemanager.infra.repository.InMemoryWalletRepository;
+
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+
+public class FinanceCliApp {
+
+    private final Scanner scanner;
+    private final UserService userService;
+    private final WalletService walletService;
+    private final BudgetService budgetService;
+    private final CategoryService categoryService;
+
+    // currently logged-in user (null means guest)
+    private User currentUser;
+
+    public FinanceCliApp() {
+        this.scanner = new Scanner(System.in);
+
+        // infrastructure initialization
+        UserRepository userRepository = new InMemoryUserRepository();
+        WalletRepository walletRepository = new InMemoryWalletRepository();
+        PasswordHasher passwordHasher = new PasswordHasher();
+
+        this.userService = new UserService(userRepository, passwordHasher);
+        this.categoryService = new CategoryService();
+        this.budgetService = new BudgetService(walletRepository, categoryService);
+        this.walletService = new WalletService(walletRepository, budgetService);
+    }
+
+    public static void main(String[] args) {
+        FinanceCliApp app = new FinanceCliApp();
+        app.run();
+    }
+
+    public void run() {
+        System.out.println("=== Personal Finance Manager ===");
+        System.out.println("Simple CLI. Type 'help' to see available commands.\n");
+
+        boolean running = true;
+        while (running) {
+            printPrompt();
+            String line = scanner.nextLine();
+            if (line == null) {
+                break;
+            }
+
+            String command = line.trim().toLowerCase();
+            switch (command) {
+                case "help":
+                    printHelp();
+                    break;
+                case "register":
+                    handleRegister();
+                    break;
+                case "login":
+                    handleLogin();
+                    break;
+                case "logout":
+                    handleLogout();
+                    break;
+                case "add_income":
+                    handleAddIncome();
+                    break;
+                case "add_expense":
+                    handleAddExpense();
+                    break;
+                case "set_budget":
+                    handleSetBudget();
+                    break;
+                case "show_budgets":
+                    handleShowBudgets();
+                    break;
+                case "show_categories":
+                    handleShowCategories();
+                    break;
+                case "show_summary":
+                    handleShowSummary();
+                    break;
+                case "exit":
+                    running = false;
+                    break;
+                default:
+                    System.out.println("Unknown command. Type 'help' to see available commands.");
+            }
+        }
+
+        System.out.println("Exiting application. Goodbye!");
+    }
+
+    private void printPrompt() {
+        if (currentUser == null) {
+            System.out.print("[guest] > ");
+        } else {
+            System.out.print("[" + currentUser.getLogin() + "] > ");
+        }
+    }
+
+    private void printHelp() {
+        System.out.println("Available commands:");
+        System.out.println("  help           - show this help message");
+        System.out.println("  register       - register a new user");
+        System.out.println("  login          - login as an existing user");
+        System.out.println("  logout         - logout current user");
+        System.out.println("  add_income     - add income transaction for current user");
+        System.out.println("  add_expense    - add expense transaction for current user");
+        System.out.println("  set_budget     - set budget for a category");
+        System.out.println("  show_budgets   - show budgets and remaining limits");
+        System.out.println("  show_categories- list all categories with budgets");
+        System.out.println("  show_summary   - show income/expenses summary");
+        System.out.println("  exit           - exit the application");
+    }
+
+    private boolean ensureLoggedIn() {
+        if (currentUser == null) {
+            System.out.println("You must be logged in to use this command. Use 'login' or 'register' first.");
+            return false;
+        }
+        return true;
+    }
+
+    private void handleRegister() {
+        System.out.println("--- User registration ---");
+        System.out.print("Login: ");
+        String login = scanner.nextLine();
+
+        System.out.print("Password: ");
+        String password = scanner.nextLine();
+
+        System.out.print("Initial balance (e.g. 0 or 1000): ");
+        String balanceInput = scanner.nextLine();
+
+        BigDecimal initialBalance;
+        try {
+            initialBalance = new BigDecimal(balanceInput.trim());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid amount format. Registration cancelled.");
+            return;
+        }
+
+        try {
+            User user = userService.register(login, password, initialBalance);
+            currentUser = user; // Автоматический вход после регистрации
+            System.out.println("User '" + user.getLogin() + "' registered successfully. You are now logged in.");
+        } catch (IllegalArgumentException ex) {
+            System.out.println("Registration error: " + ex.getMessage());
+        }
+    }
+
+    private void handleLogin() {
+        if (currentUser != null) {
+            System.out.println("You are already logged in as '" + currentUser.getLogin() + "'. Please logout first.");
+            return;
+        }
+
+        System.out.println("--- Login ---");
+        System.out.print("Login: ");
+        String login = scanner.nextLine();
+
+        System.out.print("Password: ");
+        String password = scanner.nextLine();
+
+        User user = userService.login(login, password);
+        if (user == null) {
+            System.out.println("Invalid login or password.");
+        } else {
+            currentUser = user;
+            System.out.println("Login successful. Current user: " + currentUser.getLogin());
+        }
+    }
+
+    private void handleLogout() {
+        if (currentUser == null) {
+            System.out.println("No user is currently logged in.");
+        } else {
+            System.out.println("Logging out user: " + currentUser.getLogin());
+            currentUser = null;
+        }
+    }
+
+    private void handleAddIncome() {
+        if (!ensureLoggedIn()) {
+            return;
+        }
+
+        Wallet wallet = currentUser.getWallet();
+
+        System.out.println("--- Add income ---");
+        System.out.print("Amount: ");
+        String amountInput = scanner.nextLine();
+
+        BigDecimal amount;
+        try {
+            amount = new BigDecimal(amountInput.trim());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid amount format. Income not added.");
+            return;
+        }
+
+        System.out.print("Category name: ");
+        String categoryName = scanner.nextLine();
+        Category category = categoryService.createCategory(wallet, categoryName);
+
+        System.out.print("Description (optional): ");
+        String description = scanner.nextLine();
+
+        try {
+            walletService.addIncome(wallet, amount, category, description);
+            System.out.println("Income added successfully.");
+        } catch (IllegalArgumentException ex) {
+            System.out.println("Error adding income: " + ex.getMessage());
+        }
+    }
+
+    private void handleAddExpense() {
+        if (!ensureLoggedIn()) {
+            return;
+        }
+
+        Wallet wallet = currentUser.getWallet();
+
+        System.out.println("--- Add expense ---");
+        System.out.print("Amount: ");
+        String amountInput = scanner.nextLine();
+
+        BigDecimal amount;
+        try {
+            amount = new BigDecimal(amountInput.trim());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid amount format. Expense not added.");
+            return;
+        }
+
+        System.out.print("Category name: ");
+        String categoryName = scanner.nextLine();
+        Category category = categoryService.createCategory(wallet, categoryName);
+
+        System.out.print("Description (optional): ");
+        String description = scanner.nextLine();
+
+        try {
+            walletService.addExpense(wallet, amount, category, description);
+            System.out.println("Expense added successfully.");
+
+            // Budget alert (if category has a budget)
+            try {
+                if (budgetService.isBudgetExceeded(wallet, category)) {
+                    System.out.println("WARNING: Budget limit exceeded for category '" + category.getName() + "'.");
+                }
+            } catch (IllegalStateException ignored) {
+                // No budget set for this category — silently ignore for now
+            }
+
+            // Total income vs total expense alert
+            BigDecimal totalIncome = walletService.getTotalIncome(wallet);
+            BigDecimal totalExpense = walletService.getTotalExpense(wallet);
+            if (totalExpense.compareTo(totalIncome) > 0) {
+                System.out.println("WARNING: Total expenses are greater than total income.");
+            }
+
+        } catch (IllegalArgumentException ex) {
+            System.out.println("Error adding expense: " + ex.getMessage());
+        }
+    }
+
+    private void handleSetBudget() {
+        if (!ensureLoggedIn()) {
+            return;
+        }
+
+        Wallet wallet = currentUser.getWallet();
+
+        System.out.println("--- Set budget for category ---");
+        System.out.print("Category name: ");
+        String categoryName = scanner.nextLine();
+
+        Category category = categoryService.createCategory(wallet, categoryName);
+
+        System.out.print("Budget limit (amount): ");
+        String limitInput = scanner.nextLine();
+
+        BigDecimal limit;
+        try {
+            limit = new BigDecimal(limitInput.trim());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid amount format. Budget not set.");
+            return;
+        }
+
+        try {
+            budgetService.setBudget(wallet, category, limit);
+            System.out.println("Budget set for category '" + category.getName() + "': " + limit);
+        } catch (IllegalArgumentException ex) {
+            System.out.println("Error setting budget: " + ex.getMessage());
+        }
+    }
+
+    private void handleShowBudgets() {
+        if (!ensureLoggedIn()) {
+            return;
+        }
+
+        Wallet wallet = currentUser.getWallet();
+
+        System.out.println("--- Budgets by category ---");
+
+        var budgets = budgetService.getAllBudgets(wallet);
+        if (budgets.isEmpty()) {
+            System.out.println("No budgets set.");
+            return;
+        }
+
+        for (var budget : budgets) {
+            Category category = budget.getCategory();
+            BigDecimal limit = budget.getLimit();
+            BigDecimal spent = budget.getSpent();
+
+            BigDecimal remaining;
+            try {
+                remaining = budgetService.getRemainingLimit(wallet, category);
+            } catch (IllegalStateException e) {
+                // Should not happen for budgets returned by getAllBudgets,
+                // but just in case:
+                remaining = limit.subtract(spent);
+            }
+
+            System.out.println(
+                    category.getName()
+                            + ": limit = " + limit
+                            + ", spent = " + spent
+                            + ", remaining = " + remaining
+            );
+        }
+    }
+
+    private void handleShowCategories() {
+        if (!ensureLoggedIn()) {
+            return;
+        }
+
+        Wallet wallet = currentUser.getWallet();
+
+        System.out.println("--- Categories (with budgets) ---");
+
+        var categories = categoryService.getAllCategories(wallet);
+        if (categories.isEmpty()) {
+            System.out.println("No categories with budgets yet.");
+            return;
+        }
+
+        for (Category category : categories) {
+            System.out.println(" - " + category.getName());
+        }
+    }
+
+    private void handleShowSummary() {
+        if (!ensureLoggedIn()) {
+            return;
+        }
+
+        Wallet wallet = currentUser.getWallet();
+
+        System.out.println("--- Summary ---");
+
+        // 1. Общий доход
+        BigDecimal totalIncome = walletService.getTotalIncome(wallet);
+        System.out.println("Общий доход: " + totalIncome);
+
+        // 2. Доходы по категориям
+        Map<String, BigDecimal> incomeByCategory = new HashMap<>();
+        wallet.getTransactions().forEach(tx -> {
+            if (tx.getType() == TransactionType.INCOME) {
+                String catName = tx.getCategory().getName();
+                incomeByCategory.merge(catName, tx.getAmount(), BigDecimal::add);
+            }
+        });
+
+        if (!incomeByCategory.isEmpty()) {
+            System.out.println("Доходы по категориям:");
+            incomeByCategory.forEach((catName, amount) ->
+                    System.out.println("  " + catName + ": " + amount)
+            );
+        }
+
+        // 3. Общие расходы
+        BigDecimal totalExpense = walletService.getTotalExpense(wallet);
+        System.out.println("Общие расходы: " + totalExpense);
+
+        // 4. Бюджет по категориям (используем логику из handleShowBudgets)
+        var budgets = budgetService.getAllBudgets(wallet);
+        if (!budgets.isEmpty()) {
+            System.out.println("Бюджет по категориям:");
+            for (var budget : budgets) {
+                Category category = budget.getCategory();
+                BigDecimal limit = budget.getLimit();
+                
+                BigDecimal remaining;
+                try {
+                    remaining = budgetService.getRemainingLimit(wallet, category);
+                } catch (IllegalStateException e) {
+                    // Should not happen for budgets returned by getAllBudgets
+                    remaining = limit.subtract(budget.getSpent());
+                }
+
+                System.out.println("  " + category.getName() 
+                        + ": " + limit 
+                        + ", Оставшийся бюджет: " + remaining);
+            }
+        }
+    }
+
+
+}
