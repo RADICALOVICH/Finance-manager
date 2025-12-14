@@ -113,6 +113,9 @@ public class FinanceCliApp {
                 case "import_transactions":
                     handleImportTransactions();
                     break;
+                case "rename_category":
+                    handleRenameCategory();
+                    break;
                 case "exit":
                     saveAllData();
                     running = false;
@@ -155,6 +158,7 @@ public class FinanceCliApp {
         System.out.println("  show_transactions - show transactions with filters (category, date range)");
         System.out.println("  export_transactions - export transactions to CSV file");
         System.out.println("  import_transactions - import transactions from CSV file");
+        System.out.println("  rename_category - rename a category (updates all transactions and budgets)");
         System.out.println("  exit           - exit the application");
     }
 
@@ -662,6 +666,44 @@ public class FinanceCliApp {
             }
         } catch (IOException e) {
             System.out.println("Error reading file: " + e.getMessage());
+        }
+    }
+
+    private void handleRenameCategory() {
+        if (!ensureLoggedIn()) {
+            return;
+        }
+
+        Wallet wallet = currentUser.getWallet();
+
+        System.out.println("--- Rename Category ---");
+        System.out.print("Current category name: ");
+        String oldCategoryName = scanner.nextLine().trim();
+        
+        if (oldCategoryName.isEmpty()) {
+            System.out.println("Category name cannot be empty.");
+            return;
+        }
+
+        Category oldCategory = categoryService.findCategoryByName(wallet, oldCategoryName);
+        if (oldCategory == null) {
+            System.out.println("Category '" + oldCategoryName + "' not found.");
+            return;
+        }
+
+        System.out.print("New category name: ");
+        String newCategoryName = scanner.nextLine().trim();
+        
+        if (newCategoryName.isEmpty()) {
+            System.out.println("New category name cannot be empty.");
+            return;
+        }
+
+        try {
+            categoryService.renameCategory(wallet, oldCategory, newCategoryName, walletRepository);
+            System.out.println("Category renamed from '" + oldCategory.getName() + "' to '" + newCategoryName + "'.");
+        } catch (IllegalArgumentException ex) {
+            System.out.println("Error renaming category: " + ex.getMessage());
         }
     }
 

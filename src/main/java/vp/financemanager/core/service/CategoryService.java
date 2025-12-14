@@ -3,7 +3,6 @@ package vp.financemanager.core.service;
 import vp.financemanager.core.models.Category;
 import vp.financemanager.core.models.CategoryBudget;
 import vp.financemanager.core.models.Transaction;
-import vp.financemanager.core.models.TransactionType;
 import vp.financemanager.core.models.Wallet;
 import vp.financemanager.core.repository.WalletRepository;
 
