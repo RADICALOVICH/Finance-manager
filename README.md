@@ -84,10 +84,29 @@ To run tests:
 mvn test
 ```
 
+## Code Quality
+
+The project uses Checkstyle for code style validation:
+
+```bash
+mvn checkstyle:check
+```
+
+## Continuous Integration
+
+The project includes GitHub Actions CI workflow that automatically:
+- Builds the project
+- Runs all tests
+- Checks code style with Checkstyle
+
+The CI runs on every push and pull request to main/master/develop branches.
+
 ## Technologies
 
 - Java 17
 - Maven
 - Jackson (JSON serialization)
 - SHA-256 (password hashing)
+- JUnit 5 (testing)
+- Checkstyle (code style validation)
 

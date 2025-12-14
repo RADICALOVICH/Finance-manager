@@ -482,7 +482,7 @@ public class FinanceCliApp {
         System.out.println("--- Show Transactions ---");
         System.out.print("Type (income/expense/all, default: all): ");
         String typeInput = scanner.nextLine().trim().toLowerCase();
-        
+
         TransactionType type = null;
         if ("income".equals(typeInput)) {
             type = TransactionType.INCOME;
@@ -535,7 +535,7 @@ public class FinanceCliApp {
         System.out.println("\nTransactions:");
         BigDecimal totalIncome = BigDecimal.ZERO;
         BigDecimal totalExpense = BigDecimal.ZERO;
-        
+
         for (Transaction tx : transactions) {
             System.out.println(String.format("  %s | %s | %s | %s | %s",
                     tx.getTimestamp().toLocalDate(),
@@ -543,14 +543,14 @@ public class FinanceCliApp {
                     tx.getCategory().getName(),
                     tx.getAmount(),
                     tx.getDescription() != null ? tx.getDescription() : ""));
-            
+
             if (tx.getType() == TransactionType.INCOME) {
                 totalIncome = totalIncome.add(tx.getAmount());
             } else {
                 totalExpense = totalExpense.add(tx.getAmount());
             }
         }
-        
+
         System.out.println("\nTotal: " + transactions.size() + " transaction(s)");
         if (type == null || type == TransactionType.INCOME) {
             System.out.println("Total income (filtered): " + totalIncome);
@@ -570,7 +570,7 @@ public class FinanceCliApp {
         System.out.println("--- Export Transactions to CSV ---");
         System.out.print("Type (income/expense/all, default: all): ");
         String typeInput = scanner.nextLine().trim().toLowerCase();
-        
+
         TransactionType type = null;
         if ("income".equals(typeInput)) {
             type = TransactionType.INCOME;
@@ -647,7 +647,7 @@ public class FinanceCliApp {
         System.out.println("--- Import Transactions from CSV ---");
         System.out.print("CSV file name: ");
         String fileName = scanner.nextLine().trim();
-        
+
         if (fileName.isEmpty()) {
             System.out.println("File name cannot be empty.");
             return;
@@ -655,7 +655,7 @@ public class FinanceCliApp {
 
         try (FileReader reader = new FileReader(fileName)) {
             List<String> errors = walletService.importTransactionsFromCsv(wallet, reader, categoryService);
-            
+
             if (errors.isEmpty()) {
                 System.out.println("Transactions imported successfully.");
             } else {
@@ -679,7 +679,7 @@ public class FinanceCliApp {
         System.out.println("--- Rename Category ---");
         System.out.print("Current category name: ");
         String oldCategoryName = scanner.nextLine().trim();
-        
+
         if (oldCategoryName.isEmpty()) {
             System.out.println("Category name cannot be empty.");
             return;
@@ -693,7 +693,7 @@ public class FinanceCliApp {
 
         System.out.print("New category name: ");
         String newCategoryName = scanner.nextLine().trim();
-        
+
         if (newCategoryName.isEmpty()) {
             System.out.println("New category name cannot be empty.");
             return;
