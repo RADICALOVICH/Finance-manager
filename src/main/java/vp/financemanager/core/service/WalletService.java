@@ -295,7 +295,7 @@ public class WalletService {
             }
         }
         fields.add(currentField.toString());
-        
+
         return fields.toArray(new String[0]);
     }
 }

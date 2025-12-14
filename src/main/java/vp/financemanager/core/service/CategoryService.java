@@ -31,7 +31,7 @@ public class CategoryService {
         }
 
         Category newCategory = new Category(trimmedName);
-        
+
         return newCategory;
     }
 
@@ -44,7 +44,7 @@ public class CategoryService {
         }
 
         String trimmedName = name.trim();
-        
+
         // Сначала ищем в categoryBudgets
         Map<Category, CategoryBudget> budgets = wallet.getCategoryBudgets();
         for (Category category : budgets.keySet()) {
@@ -52,7 +52,7 @@ public class CategoryService {
                 return category;
             }
         }
-        
+
         // Если не найдено в budgets, ищем в транзакциях
         for (Transaction tx : wallet.getTransactions()) {
             Category category = tx.getCategory();
@@ -76,12 +76,12 @@ public class CategoryService {
         if (wallet == null || category == null) {
             return null;
         }
-        
+
         // Сначала проверяем точное совпадение
         if (wallet.hasCategoryBudget(category)) {
             return category;
         }
-        
+
         // Ищем по имени (case-insensitive)
         String categoryName = category.getName();
         for (Category existingCategory : wallet.getCategoryBudgets().keySet()) {
@@ -89,7 +89,7 @@ public class CategoryService {
                 return existingCategory;
             }
         }
-        
+
         return null;
     }
 
@@ -103,16 +103,16 @@ public class CategoryService {
         if (newName == null || newName.isBlank()) {
             throw new IllegalArgumentException("New category name cannot be null or blank");
         }
-        
+
         String trimmedNewName = newName.trim();
-        
+
         Category existingCategory = findCategoryByName(wallet, trimmedNewName);
         if (existingCategory != null && !existingCategory.equals(oldCategory)) {
             throw new IllegalArgumentException("Category with name '" + trimmedNewName + "' already exists");
         }
-        
+
         Category newCategory = new Category(trimmedNewName);
-        
+
         List<Transaction> transactions = wallet.getTransactions();
         for (int i = 0; i < transactions.size(); i++) {
             Transaction tx = transactions.get(i);
@@ -127,14 +127,14 @@ public class CategoryService {
                 wallet.replaceTransaction(i, newTx);
             }
         }
-        
+
         CategoryBudget budget = wallet.getCategoryBudget(oldCategory);
         if (budget != null) {
             CategoryBudget newBudget = new CategoryBudget(newCategory, budget.getLimit());
             newBudget.setSpent(budget.getSpent());
             wallet.replaceCategoryInBudget(oldCategory, newCategory, newBudget);
         }
-        
+
         walletRepository.save(wallet);
     }
 }

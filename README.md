@@ -17,6 +17,15 @@ CLI application for managing personal finances. Track income and expenses, manag
 - Java 17 or higher
 - Maven 3.6+
 
+## Dependencies
+
+All dependencies are managed by Maven and will be automatically downloaded during the build process:
+- Jackson (JSON serialization) - version 2.15.2
+- JUnit 5 (testing) - version 5.10.0
+- Checkstyle (code style validation) - version 10.12.5
+
+No manual installation required - Maven handles everything automatically.
+
 ## Installation and Running
 
 1. Clone the repository or download the project
@@ -51,6 +60,10 @@ After starting, you'll see a command prompt. Type `help` to see available comman
 - `show_budgets` - show all budgets with remaining limits
 - `show_categories` - list all categories with budgets
 - `show_summary` - show income/expenses summary
+- `show_transactions` - show transactions with filters (category, date range, type)
+- `export_transactions` - export transactions to CSV file
+- `import_transactions` - import transactions from CSV file
+- `rename_category` - rename a category (updates all transactions and budgets)
 - `help` - show help message
 - `exit` - exit the application
 

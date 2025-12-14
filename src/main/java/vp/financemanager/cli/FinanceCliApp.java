@@ -456,7 +456,7 @@ public class FinanceCliApp {
             for (var budget : budgets) {
                 Category category = budget.getCategory();
                 BigDecimal limit = budget.getLimit();
-                
+
                 BigDecimal remaining;
                 try {
                     remaining = budgetService.getRemainingLimit(wallet, category);
@@ -465,8 +465,8 @@ public class FinanceCliApp {
                     remaining = limit.subtract(budget.getSpent());
                 }
 
-                System.out.println("  " + category.getName() 
-                        + ": " + limit 
+                System.out.println("  " + category.getName()
+                        + ": " + limit
                         + ", Оставшийся бюджет: " + remaining);
             }
         }
@@ -492,7 +492,7 @@ public class FinanceCliApp {
 
         System.out.print("Categories (comma-separated, empty for all): ");
         String categoriesInput = scanner.nextLine().trim();
-        
+
         List<Category> categories = null;
         if (!categoriesInput.isEmpty()) {
             categories = new ArrayList<>();
@@ -580,7 +580,7 @@ public class FinanceCliApp {
 
         System.out.print("Categories (comma-separated, empty for all): ");
         String categoriesInput = scanner.nextLine().trim();
-        
+
         List<Category> categories = null;
         if (!categoriesInput.isEmpty()) {
             categories = new ArrayList<>();
