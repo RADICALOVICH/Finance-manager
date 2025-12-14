@@ -141,6 +141,19 @@ public class BudgetService {
         return remaining.compareTo(BigDecimal.ZERO) < 0;
     }
 
+    public boolean isBudgetNearLimit(Wallet wallet, Category category) {
+        CategoryBudget budget = wallet.getCategoryBudget(category);
+        if (budget == null || budget.getLimit().compareTo(BigDecimal.ZERO) == 0) {
+            return false;
+        }
+        
+        BigDecimal spent = budget.getSpent();
+        BigDecimal limit = budget.getLimit();
+        BigDecimal eightyPercent = limit.multiply(new BigDecimal("0.8"));
+        
+        return spent.compareTo(eightyPercent) >= 0 && !isBudgetExceeded(wallet, category);
+    }
+
     public void ensureBudgetExists(Wallet wallet, Category category) {
         if (wallet == null || category == null) {
             return;

@@ -233,6 +233,11 @@ public class FinanceCliApp {
         try {
             walletService.addIncome(wallet, amount, category, description);
             System.out.println("Income added successfully.");
+
+            // Zero balance alert
+            if (wallet.getBalance().compareTo(BigDecimal.ZERO) == 0) {
+                System.out.println("WARNING: Wallet balance is zero.");
+            }
         } catch (IllegalArgumentException ex) {
             System.out.println("Error adding income: " + ex.getMessage());
         }
@@ -268,13 +273,20 @@ public class FinanceCliApp {
             walletService.addExpense(wallet, amount, category, description);
             System.out.println("Expense added successfully.");
 
-            // Budget alert (if category has a budget)
+            // Budget alerts (if category has a budget)
             try {
                 if (budgetService.isBudgetExceeded(wallet, category)) {
                     System.out.println("WARNING: Budget limit exceeded for category '" + category.getName() + "'.");
+                } else if (budgetService.isBudgetNearLimit(wallet, category)) {
+                    System.out.println("WARNING: Budget for category '" + category.getName() + "' is at 80% or more of the limit.");
                 }
             } catch (IllegalStateException ignored) {
                 // No budget set for this category — silently ignore for now
+            }
+
+            // Zero balance alert
+            if (wallet.getBalance().compareTo(BigDecimal.ZERO) == 0) {
+                System.out.println("WARNING: Wallet balance is zero.");
             }
 
             // Total income vs total expense alert
