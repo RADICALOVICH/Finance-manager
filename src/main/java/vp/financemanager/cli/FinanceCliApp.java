@@ -15,6 +15,9 @@ import vp.financemanager.core.service.WalletService;
 import vp.financemanager.infra.repository.FileUserRepository;
 import vp.financemanager.infra.repository.FileWalletRepository;
 
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -92,9 +95,6 @@ public class FinanceCliApp {
                 case "set_budget":
                     handleSetBudget();
                     break;
-                case "remove_budget":
-                    handleRemoveBudget();
-                    break;
                 case "show_budgets":
                     handleShowBudgets();
                     break;
@@ -106,6 +106,12 @@ public class FinanceCliApp {
                     break;
                 case "show_transactions":
                     handleShowTransactions();
+                    break;
+                case "export_transactions":
+                    handleExportTransactions();
+                    break;
+                case "import_transactions":
+                    handleImportTransactions();
                     break;
                 case "exit":
                     saveAllData();
@@ -143,11 +149,12 @@ public class FinanceCliApp {
         System.out.println("  add_income     - add income transaction for current user");
         System.out.println("  add_expense    - add expense transaction for current user");
         System.out.println("  set_budget     - set budget for a category");
-        System.out.println("  remove_budget  - remove budget for a category");
         System.out.println("  show_budgets   - show budgets and remaining limits");
         System.out.println("  show_categories- list all categories with budgets");
         System.out.println("  show_summary   - show income/expenses summary");
         System.out.println("  show_transactions - show transactions with filters (category, date range)");
+        System.out.println("  export_transactions - export transactions to CSV file");
+        System.out.println("  import_transactions - import transactions from CSV file");
         System.out.println("  exit           - exit the application");
     }
 
@@ -347,31 +354,6 @@ public class FinanceCliApp {
         }
     }
 
-    private void handleRemoveBudget() {
-        if (!ensureLoggedIn()) {
-            return;
-        }
-
-        Wallet wallet = currentUser.getWallet();
-
-        System.out.println("--- Remove budget for category ---");
-        System.out.print("Category name: ");
-        String categoryName = scanner.nextLine();
-
-        Category category = categoryService.findCategoryByName(wallet, categoryName);
-        if (category == null) {
-            System.out.println("Category '" + categoryName + "' not found.");
-            return;
-        }
-
-        try {
-            budgetService.removeBudget(wallet, category);
-            System.out.println("Budget removed for category '" + category.getName() + "'.");
-        } catch (IllegalArgumentException ex) {
-            System.out.println("Error removing budget: " + ex.getMessage());
-        }
-    }
-
     private void handleShowBudgets() {
         if (!ensureLoggedIn()) {
             return;
@@ -447,8 +429,8 @@ public class FinanceCliApp {
         Map<String, BigDecimal> incomeByCategory = new HashMap<>();
         wallet.getTransactions().forEach(tx -> {
             if (tx.getType() == TransactionType.INCOME) {
-                String catName = tx.getCategory().getName();
-                incomeByCategory.merge(catName, tx.getAmount(), BigDecimal::add);
+                    String catName = tx.getCategory().getName();
+                    incomeByCategory.merge(catName, tx.getAmount(), BigDecimal::add);
             }
         });
 
@@ -571,6 +553,115 @@ public class FinanceCliApp {
         }
         if (type == null || type == TransactionType.EXPENSE) {
             System.out.println("Total expense (filtered): " + totalExpense);
+        }
+    }
+
+    private void handleExportTransactions() {
+        if (!ensureLoggedIn()) {
+            return;
+        }
+
+        Wallet wallet = currentUser.getWallet();
+
+        System.out.println("--- Export Transactions to CSV ---");
+        System.out.print("Type (income/expense/all, default: all): ");
+        String typeInput = scanner.nextLine().trim().toLowerCase();
+        
+        TransactionType type = null;
+        if ("income".equals(typeInput)) {
+            type = TransactionType.INCOME;
+        } else if ("expense".equals(typeInput)) {
+            type = TransactionType.EXPENSE;
+        }
+
+        System.out.print("Categories (comma-separated, empty for all): ");
+        String categoriesInput = scanner.nextLine().trim();
+        
+        List<Category> categories = null;
+        if (!categoriesInput.isEmpty()) {
+            categories = new ArrayList<>();
+            String[] categoryNames = categoriesInput.split(",");
+            for (String catName : categoryNames) {
+                Category existing = categoryService.findCategoryByName(wallet, catName.trim());
+                if (existing != null) {
+                    categories.add(existing);
+                } else {
+                    System.out.println("Warning: Category '" + catName.trim() + "' not found, skipping.");
+                }
+            }
+            if (categories.isEmpty()) {
+                System.out.println("No valid categories found. Exporting all transactions.");
+                categories = null;
+            }
+        }
+
+        System.out.print("From date (YYYY-MM-DD, empty for no limit): ");
+        String fromDateInput = scanner.nextLine().trim();
+        LocalDate fromDate = parseDate(fromDateInput);
+        if (fromDateInput != null && !fromDateInput.isEmpty() && fromDate == null) {
+            System.out.println("Invalid date format. Ignoring from date filter.");
+        }
+
+        System.out.print("To date (YYYY-MM-DD, empty for no limit): ");
+        String toDateInput = scanner.nextLine().trim();
+        LocalDate toDate = parseDate(toDateInput);
+        if (toDateInput != null && !toDateInput.isEmpty() && toDate == null) {
+            System.out.println("Invalid date format. Ignoring to date filter.");
+        }
+
+        System.out.print("Output file name (default: transactions_export.csv): ");
+        String fileName = scanner.nextLine().trim();
+        if (fileName.isEmpty()) {
+            fileName = "transactions_export.csv";
+        }
+        if (!fileName.endsWith(".csv")) {
+            fileName += ".csv";
+        }
+
+        List<Transaction> transactions = walletService.getTransactions(wallet, type, categories, fromDate, toDate);
+
+        if (transactions.isEmpty()) {
+            System.out.println("No transactions found matching the criteria. Export cancelled.");
+            return;
+        }
+
+        try (FileWriter writer = new FileWriter(fileName)) {
+            walletService.exportTransactionsToCsv(wallet, type, categories, fromDate, toDate, writer);
+            System.out.println("Exported " + transactions.size() + " transaction(s) to " + fileName);
+        } catch (IOException e) {
+            System.out.println("Error exporting transactions: " + e.getMessage());
+        }
+    }
+
+    private void handleImportTransactions() {
+        if (!ensureLoggedIn()) {
+            return;
+        }
+
+        Wallet wallet = currentUser.getWallet();
+
+        System.out.println("--- Import Transactions from CSV ---");
+        System.out.print("CSV file name: ");
+        String fileName = scanner.nextLine().trim();
+        
+        if (fileName.isEmpty()) {
+            System.out.println("File name cannot be empty.");
+            return;
+        }
+
+        try (FileReader reader = new FileReader(fileName)) {
+            List<String> errors = walletService.importTransactionsFromCsv(wallet, reader, categoryService);
+            
+            if (errors.isEmpty()) {
+                System.out.println("Transactions imported successfully.");
+            } else {
+                System.out.println("Import completed with " + errors.size() + " error(s):");
+                for (String error : errors) {
+                    System.out.println("  - " + error);
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error reading file: " + e.getMessage());
         }
     }
 

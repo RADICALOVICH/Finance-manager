@@ -3,7 +3,9 @@ package vp.financemanager.core.service;
 import vp.financemanager.core.models.Category;
 import vp.financemanager.core.models.CategoryBudget;
 import vp.financemanager.core.models.Transaction;
+import vp.financemanager.core.models.TransactionType;
 import vp.financemanager.core.models.Wallet;
+import vp.financemanager.core.repository.WalletRepository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -90,5 +92,50 @@ public class CategoryService {
         }
         
         return null;
+    }
+
+    public void renameCategory(Wallet wallet, Category oldCategory, String newName, WalletRepository walletRepository) {
+        if (wallet == null) {
+            throw new IllegalArgumentException("Wallet cannot be null");
+        }
+        if (oldCategory == null) {
+            throw new IllegalArgumentException("Old category cannot be null");
+        }
+        if (newName == null || newName.isBlank()) {
+            throw new IllegalArgumentException("New category name cannot be null or blank");
+        }
+        
+        String trimmedNewName = newName.trim();
+        
+        Category existingCategory = findCategoryByName(wallet, trimmedNewName);
+        if (existingCategory != null && !existingCategory.equals(oldCategory)) {
+            throw new IllegalArgumentException("Category with name '" + trimmedNewName + "' already exists");
+        }
+        
+        Category newCategory = new Category(trimmedNewName);
+        
+        List<Transaction> transactions = wallet.getTransactions();
+        for (int i = 0; i < transactions.size(); i++) {
+            Transaction tx = transactions.get(i);
+            if (tx.getCategory().equals(oldCategory)) {
+                Transaction newTx = new Transaction(
+                    tx.getType(),
+                    tx.getAmount(),
+                    newCategory,
+                    tx.getDescription(),
+                    tx.getTimestamp()
+                );
+                wallet.replaceTransaction(i, newTx);
+            }
+        }
+        
+        CategoryBudget budget = wallet.getCategoryBudget(oldCategory);
+        if (budget != null) {
+            CategoryBudget newBudget = new CategoryBudget(newCategory, budget.getLimit());
+            newBudget.setSpent(budget.getSpent());
+            wallet.replaceCategoryInBudget(oldCategory, newCategory, newBudget);
+        }
+        
+        walletRepository.save(wallet);
     }
 }

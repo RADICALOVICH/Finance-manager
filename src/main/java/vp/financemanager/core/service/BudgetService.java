@@ -173,25 +173,4 @@ public class BudgetService {
         }
     }
 
-    public void removeBudget(Wallet wallet, Category category) {
-        if (wallet == null) {
-            throw new IllegalArgumentException("Wallet cannot be null");
-        }
-        if (category == null) {
-            throw new IllegalArgumentException("Category cannot be null");
-        }
-
-        Category existingCategory = categoryService.findCategoryInBudgets(wallet, category);
-        if (existingCategory == null) {
-            throw new IllegalArgumentException("Budget not found for category: " + category.getName());
-        }
-
-        if (!wallet.hasCategoryBudget(existingCategory)) {
-            throw new IllegalArgumentException("Budget not found for category: " + category.getName());
-        }
-
-        wallet.removeCategoryBudget(existingCategory);
-        walletRepository.save(wallet);
-    }
-
 }

@@ -3,9 +3,15 @@ package vp.financemanager.core.service;
 import vp.financemanager.core.models.*;
 import vp.financemanager.core.repository.WalletRepository;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -165,5 +171,131 @@ public class WalletService {
                     return afterFrom && beforeTo;
                 })
                 .collect(Collectors.toList());
+    }
+
+    public void exportTransactionsToCsv(Wallet wallet,
+                                       TransactionType type,
+                                       List<Category> categories,
+                                       LocalDate fromDate,
+                                       LocalDate toDate,
+                                       Writer writer) throws IOException {
+        List<Transaction> transactions = getTransactions(wallet, type, categories, fromDate, toDate);
+        
+        writer.write("Date,Type,Category,Amount,Description\n");
+        
+        for (Transaction tx : transactions) {
+            String date = tx.getTimestamp().toLocalDate().toString();
+            String txType = tx.getType().name();
+            String category = tx.getCategory().getName();
+            String amount = tx.getAmount().toString();
+            String description = tx.getDescription() != null ? tx.getDescription() : "";
+            
+            description = description.replace("\"", "\"\"").replace(",", ";");
+            
+            writer.write(String.format("%s,%s,%s,%s,\"%s\"\n",
+                    date, txType, category, amount, description));
+        }
+    }
+
+    public List<String> importTransactionsFromCsv(Wallet wallet, Reader reader, CategoryService categoryService) throws IOException {
+        List<String> errors = new ArrayList<>();
+        BufferedReader br = new BufferedReader(reader);
+        
+        String header = br.readLine();
+        if (header == null || !header.trim().equals("Date,Type,Category,Amount,Description")) {
+            errors.add("Invalid CSV header. Expected: Date,Type,Category,Amount,Description");
+            return errors;
+        }
+        
+        String line;
+        int lineNumber = 1;
+        int importedCount = 0;
+        
+        while ((line = br.readLine()) != null) {
+            lineNumber++;
+            line = line.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            
+            try {
+                String[] parts = parseCsvLine(line);
+                if (parts.length < 4) {
+                    errors.add("Line " + lineNumber + ": Invalid format (expected at least 4 fields)");
+                    continue;
+                }
+                
+                LocalDate date = LocalDate.parse(parts[0]);
+                TransactionType type = TransactionType.valueOf(parts[1]);
+                String categoryName = parts[2];
+                BigDecimal amount = new BigDecimal(parts[3]);
+                String description = parts.length > 4 ? parts[4].replace("\"\"", "\"") : "";
+                
+                if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+                    errors.add("Line " + lineNumber + ": Amount must be greater than 0");
+                    continue;
+                }
+                
+                Category category = categoryService.createCategory(wallet, categoryName);
+                LocalDateTime timestamp = date.atTime(LocalTime.MIDNIGHT);
+                
+                if (type == TransactionType.INCOME) {
+                    Transaction transaction = new Transaction(type, amount, category, description, timestamp);
+                    wallet.addTransaction(transaction);
+                } else {
+                    budgetService.ensureBudgetExists(wallet, category);
+                    Category existingCategory = category;
+                    CategoryBudget budget = wallet.getCategoryBudget(category);
+                    if (budget != null) {
+                        existingCategory = budget.getCategory();
+                    }
+                    
+                    Transaction transaction = new Transaction(type, amount, existingCategory, description, timestamp);
+                    wallet.addTransaction(transaction);
+                    
+                    CategoryBudget categoryBudget = wallet.getCategoryBudget(existingCategory);
+                    if (categoryBudget != null) {
+                        categoryBudget.addSpent(amount);
+                    }
+                }
+                
+                importedCount++;
+            } catch (Exception e) {
+                errors.add("Line " + lineNumber + ": " + e.getMessage());
+            }
+        }
+        
+        if (importedCount > 0) {
+            walletRepository.save(wallet);
+        }
+        
+        return errors;
+    }
+    
+    private String[] parseCsvLine(String line) {
+        List<String> fields = new ArrayList<>();
+        boolean inQuotes = false;
+        StringBuilder currentField = new StringBuilder();
+        
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            
+            if (c == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    currentField.append('"');
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (c == ',' && !inQuotes) {
+                fields.add(currentField.toString());
+                currentField = new StringBuilder();
+            } else {
+                currentField.append(c);
+            }
+        }
+        fields.add(currentField.toString());
+        
+        return fields.toArray(new String[0]);
     }
 }

@@ -95,13 +95,6 @@ public class Wallet {
         return this.categoryBudgets.containsKey(category);
     }
 
-    public void removeCategoryBudget(Category category) {
-        if (category == null) {
-            throw new IllegalArgumentException("Category cannot be null");
-        }
-        this.categoryBudgets.remove(category);
-    }
-
     public void restoreTransaction(Transaction transaction) {
         if (transaction == null) {
             return;
@@ -114,5 +107,38 @@ public class Wallet {
             throw new IllegalArgumentException("Balance cannot be null");
         }
         this.balance = balance;
+    }
+
+    public void replaceTransaction(int index, Transaction newTransaction) {
+        if (index < 0 || index >= transactions.size()) {
+            throw new IllegalArgumentException("Invalid transaction index");
+        }
+        if (newTransaction == null) {
+            throw new IllegalArgumentException("Transaction cannot be null");
+        }
+        
+        Transaction oldTransaction = transactions.get(index);
+        
+        if (oldTransaction.getType() == TransactionType.INCOME) {
+            this.balance = this.balance.subtract(oldTransaction.getAmount());
+        } else if (oldTransaction.getType() == TransactionType.EXPENSE) {
+            this.balance = this.balance.add(oldTransaction.getAmount());
+        }
+        
+        transactions.set(index, newTransaction);
+        
+        if (newTransaction.getType() == TransactionType.INCOME) {
+            this.balance = this.balance.add(newTransaction.getAmount());
+        } else if (newTransaction.getType() == TransactionType.EXPENSE) {
+            this.balance = this.balance.subtract(newTransaction.getAmount());
+        }
+    }
+
+    public void replaceCategoryInBudget(Category oldCategory, Category newCategory, CategoryBudget budget) {
+        if (oldCategory == null || newCategory == null || budget == null) {
+            throw new IllegalArgumentException("Category and budget cannot be null");
+        }
+        this.categoryBudgets.remove(oldCategory);
+        this.categoryBudgets.put(newCategory, budget);
     }
 }
