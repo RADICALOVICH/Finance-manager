@@ -29,8 +29,6 @@ public class CategoryService {
             return existing;
         }
 
-        // Создаем новую категорию (НЕ создаем CategoryBudget автоматически)
-        // CategoryBudget будет создан только при добавлении расходов или установке бюджета
         Category newCategory = new Category(trimmedName);
         
         return newCategory;
@@ -73,10 +71,6 @@ public class CategoryService {
         return new ArrayList<>(wallet.getCategoryBudgets().keySet());
     }
 
-    /**
-     * Находит категорию в бюджетах кошелька (case-insensitive)
-     * @return существующую категорию из budgets или null, если не найдена
-     */
     public Category findCategoryInBudgets(Wallet wallet, Category category) {
         if (wallet == null || category == null) {
             return null;

@@ -1,0 +1,33 @@
+{
+  "ownerLogin" : "radicalovich",
+  "balance" : 4100,
+  "transactions" : [ {
+    "type" : "INCOME",
+    "amount" : 5000,
+    "categoryName" : "зарплата",
+    "description" : "",
+    "timestamp" : [ 2025, 12, 14, 15, 54, 16, 705063000 ]
+  }, {
+    "type" : "EXPENSE",
+    "amount" : 500,
+    "categoryName" : "еда",
+    "description" : "",
+    "timestamp" : [ 2025, 12, 14, 15, 54, 34, 790250000 ]
+  }, {
+    "type" : "EXPENSE",
+    "amount" : 400,
+    "categoryName" : "развлекуха",
+    "description" : "",
+    "timestamp" : [ 2025, 12, 14, 15, 54, 46, 493050000 ]
+  } ],
+  "categoryBudgets" : {
+    "еда" : {
+      "limit" : 1000,
+      "spent" : 500
+    },
+    "развлекуха" : {
+      "limit" : 0,
+      "spent" : 400
+    }
+  }
+}

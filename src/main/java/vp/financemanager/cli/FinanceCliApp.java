@@ -11,8 +11,8 @@ import vp.financemanager.core.service.CategoryService;
 import vp.financemanager.core.service.PasswordHasher;
 import vp.financemanager.core.service.UserService;
 import vp.financemanager.core.service.WalletService;
-import vp.financemanager.infra.repository.InMemoryUserRepository;
-import vp.financemanager.infra.repository.InMemoryWalletRepository;
+import vp.financemanager.infra.repository.FileUserRepository;
+import vp.financemanager.infra.repository.FileWalletRepository;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -26,6 +26,8 @@ public class FinanceCliApp {
     private final WalletService walletService;
     private final BudgetService budgetService;
     private final CategoryService categoryService;
+    private final UserRepository userRepository;
+    private final WalletRepository walletRepository;
 
     // currently logged-in user (null means guest)
     private User currentUser;
@@ -34,8 +36,8 @@ public class FinanceCliApp {
         this.scanner = new Scanner(System.in);
 
         // infrastructure initialization
-        UserRepository userRepository = new InMemoryUserRepository();
-        WalletRepository walletRepository = new InMemoryWalletRepository();
+        this.userRepository = new FileUserRepository();
+        this.walletRepository = new FileWalletRepository();
         PasswordHasher passwordHasher = new PasswordHasher();
 
         this.userService = new UserService(userRepository, passwordHasher);
@@ -94,6 +96,7 @@ public class FinanceCliApp {
                     handleShowSummary();
                     break;
                 case "exit":
+                    saveAllData();
                     running = false;
                     break;
                 default:
@@ -102,6 +105,13 @@ public class FinanceCliApp {
         }
 
         System.out.println("Exiting application. Goodbye!");
+    }
+
+    private void saveAllData() {
+        if (currentUser != null) {
+            userRepository.save(currentUser);
+            walletRepository.save(currentUser.getWallet());
+        }
     }
 
     private void printPrompt() {

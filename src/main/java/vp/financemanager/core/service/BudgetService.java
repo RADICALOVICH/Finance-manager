@@ -58,9 +58,6 @@ public class BudgetService {
         walletRepository.save(wallet);
     }
     
-    /**
-     * Проверяет, используется ли категория только для доходов (INCOME транзакций)
-     */
     private boolean isCategoryOnlyForIncome(Wallet wallet, Category category) {
         boolean hasIncome = false;
         boolean hasExpense = false;
@@ -76,7 +73,6 @@ public class BudgetService {
             }
         }
         
-        // Если есть только доходы и нет расходов - категория только для доходов
         return hasIncome && !hasExpense;
     }
     
@@ -130,7 +126,6 @@ public class BudgetService {
 
         CategoryBudget budget = getBudget(wallet, category);
         if (budget == null) {
-            // можно вернуть null или 0 — но лучше явно сказать, что лимит не задан
             throw new IllegalStateException("Budget is not set for category: " + category.getName());
         }
 
@@ -140,16 +135,12 @@ public class BudgetService {
     public boolean isBudgetExceeded(Wallet wallet, Category category) {
         CategoryBudget budget = wallet.getCategoryBudget(category);
         if (budget == null) {
-            return false; // Нет бюджета - не превышен
+            return false;
         }
         BigDecimal remaining = budget.getLimit().subtract(budget.getSpent());
         return remaining.compareTo(BigDecimal.ZERO) < 0;
     }
 
-    /**
-     * Создает бюджет с лимитом 0 для категории, если его еще нет
-     * Используется при добавлении первого расхода в категорию
-     */
     public void ensureBudgetExists(Wallet wallet, Category category) {
         if (wallet == null || category == null) {
             return;
